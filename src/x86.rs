@@ -70,6 +70,16 @@ pub enum Operand {
     Imm(i64),
 }
 
+impl Operand {
+    pub fn can_live(&self) -> bool {
+        use Operand::*;
+        match self {
+            Reg(_) | Mem(_, _) | Var(_) => true,
+            Imm(_) => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum InstrF<A> {
     AddQ(A, A),
@@ -89,29 +99,52 @@ pub type Instr = InstrF<Operand>;
 impl Instr {
     pub fn uses(&self) -> HashSet<Operand> {
         use InstrF::*;
+        let mut set = HashSet::new();
         match self {
-            AddQ(src, dst) | SubQ(src, dst) => HashSet::from([src.clone(), dst.clone()]),
-            NegQ(dst) => HashSet::from([dst.clone()]),
-            MovQ(src, _) => HashSet::from([src.clone()]),
-            CallQ(_, arity) => Register::ARGUMENT_PASSING
-                .iter()
-                .take(arity.0 as usize)
-                .map(|reg| Operand::Reg(reg.clone()))
-                .collect(),
-            PushQ(_) | PopQ(_) | Jmp(_) | Syscall | RetQ => HashSet::default(),
+            AddQ(src, dst) | SubQ(src, dst) => {
+                if src.can_live() {
+                    set.insert(src.clone());
+                }
+                if dst.can_live() {
+                    set.insert(dst.clone());
+                }
+            }
+            NegQ(dst) if dst.can_live() => {
+                set.insert(dst.clone());
+            }
+            MovQ(src, _) if src.can_live() => {
+                set.insert(src.clone());
+            }
+            CallQ(_, arity) => {
+                set.extend(
+                    Register::ARGUMENT_PASSING
+                        .iter()
+                        .take(arity.0 as usize)
+                        .map(|reg| Operand::Reg(reg.clone())),
+                );
+            }
+            _ => {}
         }
+        set
     }
 
     pub fn defs(&self) -> HashSet<Operand> {
         use InstrF::*;
+        let mut set = HashSet::new();
         match self {
-            AddQ(_, dst) | SubQ(_, dst) | NegQ(dst) | MovQ(_, dst) => HashSet::from([dst.clone()]),
-            CallQ(_, _) => Register::CALLER_SAVED
-                .iter()
-                .map(|reg| Operand::Reg(reg.clone()))
-                .collect(),
-            PushQ(_) | PopQ(_) | Jmp(_) | Syscall | RetQ => HashSet::default(),
+            AddQ(_, dst) | SubQ(_, dst) | NegQ(dst) | MovQ(_, dst) if dst.can_live() => {
+                set.insert(dst.clone());
+            }
+            CallQ(_, _) => {
+                set.extend(
+                    Register::CALLER_SAVED
+                        .iter()
+                        .map(|reg| Operand::Reg(reg.clone())),
+                );
+            }
+            _ => {}
         }
+        set
     }
 }
 
