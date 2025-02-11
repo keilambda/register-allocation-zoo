@@ -86,12 +86,6 @@ pub enum InstrF<A> {
 
 pub type Instr = InstrF<Operand>;
 
-pub struct Liveness {
-    pub instr: Instr,
-    pub live_in: HashSet<Operand>,
-    pub live_out: HashSet<Operand>,
-}
-
 impl Instr {
     pub fn uses(&self) -> HashSet<Operand> {
         use InstrF::*;
@@ -121,32 +115,33 @@ impl Instr {
     }
 }
 
+pub struct Liveness {
+    pub instr: Instr,
+    pub before: HashSet<Operand>,
+    pub after: HashSet<Operand>,
+}
+
 pub struct Block(pub Vec<Instr>);
 
 impl Block {
     pub fn liveness(&self) -> Vec<Liveness> {
-        let mut live_out = HashSet::new();
+        let mut after = HashSet::new();
         let mut liveness = Vec::with_capacity(self.0.len());
 
         for instr in self.0.iter().rev() {
-            let use_set = instr.uses();
-            let def_set = instr.defs();
-
-            let mut live_in = use_set.clone();
-            live_in.extend(
-                live_out
-                    .difference(&def_set)
-                    .cloned()
-                    .collect::<HashSet<_>>(),
-            );
+            let before: HashSet<_> = instr
+                .uses()
+                .union(&after.difference(&instr.defs()).cloned().collect())
+                .cloned()
+                .collect();
 
             liveness.push(Liveness {
                 instr: instr.clone(),
-                live_in: live_in.clone(),
-                live_out: live_out.clone(),
+                before: before.clone(),
+                after: after.clone(),
             });
 
-            live_out = live_in;
+            after = before;
         }
 
         liveness.reverse();
