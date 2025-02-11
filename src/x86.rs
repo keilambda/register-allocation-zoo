@@ -3,8 +3,10 @@ use std::collections::HashSet;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
+#[derive(Debug, Clone)]
 pub struct Label(pub String);
 
+#[derive(Debug, Clone)]
 pub struct Arity(pub i8);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -68,6 +70,7 @@ pub enum Operand {
     Imm(i64),
 }
 
+#[derive(Debug, Clone)]
 pub enum InstrF<A> {
     AddQ(A, A),
     SubQ(A, A),
@@ -115,5 +118,38 @@ impl Instr {
                 .collect(),
             PushQ(_) | PopQ(_) | Jmp(_) | Syscall | RetQ => HashSet::default(),
         }
+    }
+}
+
+pub struct Block(pub Vec<Instr>);
+
+impl Block {
+    pub fn liveness(&self) -> Vec<Liveness> {
+        let mut live_out = HashSet::new();
+        let mut liveness = Vec::with_capacity(self.0.len());
+
+        for instr in self.0.iter().rev() {
+            let use_set = instr.uses();
+            let def_set = instr.defs();
+
+            let mut live_in = use_set.clone();
+            live_in.extend(
+                live_out
+                    .difference(&def_set)
+                    .cloned()
+                    .collect::<HashSet<_>>(),
+            );
+
+            liveness.push(Liveness {
+                instr: instr.clone(),
+                live_in: live_in.clone(),
+                live_out: live_out.clone(),
+            });
+
+            live_out = live_in;
+        }
+
+        liveness.reverse();
+        liveness
     }
 }
