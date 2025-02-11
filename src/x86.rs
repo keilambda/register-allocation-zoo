@@ -3,11 +3,11 @@ use std::collections::HashSet;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name(pub String);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Label(pub String);
 
-#[derive(Debug, Clone)]
-pub struct Arity(pub i8);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Arity(pub u8);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Register {
@@ -80,7 +80,19 @@ impl Operand {
     }
 }
 
-#[derive(Debug, Clone)]
+impl From<&str> for Operand {
+    fn from(value: &str) -> Self {
+        Operand::Var(Name(value.to_string()))
+    }
+}
+
+impl From<i64> for Operand {
+    fn from(value: i64) -> Self {
+        Operand::Imm(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstrF<A> {
     AddQ(A, A),
     SubQ(A, A),
@@ -179,5 +191,50 @@ impl Block {
 
         liveness.reverse();
         liveness
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_liveness() {
+        use InstrF::*;
+
+        let block = Block(vec![
+            MovQ(32.into(), "x".into()),
+            MovQ(10.into(), "y".into()),
+            MovQ("x".into(), "z".into()),
+            AddQ("y".into(), "z".into()),
+            NegQ("z".into()),
+        ]);
+
+        let analysis = block.liveness();
+
+        let live = analysis.get(0).unwrap();
+        assert_eq!(live.instr, *block.0.get(0).unwrap());
+        assert_eq!(live.before, HashSet::default());
+        assert_eq!(live.after, HashSet::from(["x".into()]));
+
+        let live = analysis.get(1).unwrap();
+        assert_eq!(live.instr, *block.0.get(1).unwrap());
+        assert_eq!(live.before, HashSet::from(["x".into()]));
+        assert_eq!(live.after, HashSet::from(["x".into(), "y".into()]));
+
+        let live = analysis.get(2).unwrap();
+        assert_eq!(live.instr, *block.0.get(2).unwrap());
+        assert_eq!(live.before, HashSet::from(["x".into(), "y".into()]));
+        assert_eq!(live.after, HashSet::from(["y".into(), "z".into()]));
+
+        let live = analysis.get(3).unwrap();
+        assert_eq!(live.instr, *block.0.get(3).unwrap());
+        assert_eq!(live.before, HashSet::from(["y".into(), "z".into()]));
+        assert_eq!(live.after, HashSet::from(["z".into()]));
+
+        let live = analysis.get(4).unwrap();
+        assert_eq!(live.instr, *block.0.get(4).unwrap());
+        assert_eq!(live.before, HashSet::from(["z".into()]));
+        assert_eq!(live.after, HashSet::default());
     }
 }
