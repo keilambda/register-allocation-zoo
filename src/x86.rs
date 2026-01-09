@@ -211,28 +211,28 @@ mod tests {
 
         let analysis = block.liveness();
 
-        let live = analysis.get(0).unwrap();
-        assert_eq!(live.instr, *block.0.get(0).unwrap());
+        let live = &analysis[0];
+        assert_eq!(live.instr, block.0[0]);
         assert_eq!(live.before, HashSet::default());
         assert_eq!(live.after, HashSet::from(["x".into()]));
 
-        let live = analysis.get(1).unwrap();
-        assert_eq!(live.instr, *block.0.get(1).unwrap());
+        let live = &analysis[1];
+        assert_eq!(live.instr, block.0[1]);
         assert_eq!(live.before, HashSet::from(["x".into()]));
         assert_eq!(live.after, HashSet::from(["x".into(), "y".into()]));
 
-        let live = analysis.get(2).unwrap();
-        assert_eq!(live.instr, *block.0.get(2).unwrap());
+        let live = &analysis[2];
+        assert_eq!(live.instr, block.0[2]);
         assert_eq!(live.before, HashSet::from(["x".into(), "y".into()]));
         assert_eq!(live.after, HashSet::from(["y".into(), "z".into()]));
 
-        let live = analysis.get(3).unwrap();
-        assert_eq!(live.instr, *block.0.get(3).unwrap());
+        let live = &analysis[3];
+        assert_eq!(live.instr, block.0[3]);
         assert_eq!(live.before, HashSet::from(["y".into(), "z".into()]));
         assert_eq!(live.after, HashSet::from(["z".into()]));
 
-        let live = analysis.get(4).unwrap();
-        assert_eq!(live.instr, *block.0.get(4).unwrap());
+        let live = &analysis[4];
+        assert_eq!(live.instr, block.0[4]);
         assert_eq!(live.before, HashSet::from(["z".into()]));
         assert_eq!(live.after, HashSet::default());
     }
