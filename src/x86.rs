@@ -1,12 +1,17 @@
+use parking_lot::Mutex;
 use std::collections::HashSet;
+use std::sync::LazyLock;
+use string_interner::{DefaultStringInterner, DefaultSymbol, StringInterner};
 
-type Name = String;
+type Name = DefaultSymbol;
+
+static INTERNER: LazyLock<Mutex<DefaultStringInterner>> = LazyLock::new(|| Mutex::new(StringInterner::default()));
 
 type Label = String;
 
 type Arity = u8;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Register {
     RSP,
     RBP,
@@ -59,7 +64,7 @@ impl Register {
     ];
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operand {
     Reg(Register),
     Mem(Register, i64),
@@ -79,7 +84,7 @@ impl Operand {
 
 impl From<&str> for Operand {
     fn from(value: &str) -> Self {
-        Operand::Var(value.to_owned())
+        Operand::Var(INTERNER.lock().get_or_intern(value))
     }
 }
 
@@ -112,24 +117,24 @@ impl Instr {
         match self {
             AddQ(src, dst) | SubQ(src, dst) => {
                 if src.can_live() {
-                    set.insert(src.clone());
+                    set.insert(*src);
                 }
                 if dst.can_live() {
-                    set.insert(dst.clone());
+                    set.insert(*dst);
                 }
             }
             NegQ(dst) if dst.can_live() => {
-                set.insert(dst.clone());
+                set.insert(*dst);
             }
             MovQ(src, _) if src.can_live() => {
-                set.insert(src.clone());
+                set.insert(*src);
             }
             CallQ(_, arity) => {
                 set.extend(
                     Register::ARGUMENT_PASSING
                         .iter()
                         .take(*arity as usize)
-                        .map(|reg| Operand::Reg(reg.clone())),
+                        .map(|reg| Operand::Reg(*reg)),
                 );
             }
             _ => {}
@@ -142,13 +147,13 @@ impl Instr {
         let mut set = HashSet::new();
         match self {
             AddQ(_, dst) | SubQ(_, dst) | NegQ(dst) | MovQ(_, dst) if dst.can_live() => {
-                set.insert(dst.clone());
+                set.insert(*dst);
             }
             CallQ(_, _) => {
                 set.extend(
                     Register::CALLER_SAVED
                         .iter()
-                        .map(|reg| Operand::Reg(reg.clone())),
+                        .map(|reg| Operand::Reg(*reg)),
                 );
             }
             _ => {}
