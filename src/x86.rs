@@ -82,7 +82,7 @@ impl Operand {
 
 impl From<&str> for Operand {
     fn from(value: &str) -> Self {
-        Operand::Var(Name(value.to_string()))
+        Operand::Var(Name(value.to_owned()))
     }
 }
 
