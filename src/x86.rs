@@ -176,11 +176,8 @@ impl Block {
         let mut liveness = Vec::with_capacity(self.0.len());
 
         for instr in self.0.iter().rev() {
-            let before: HashSet<_> = instr
-                .uses()
-                .union(&after.difference(&instr.defs()).cloned().collect())
-                .cloned()
-                .collect();
+            let mut before: HashSet<_> = after.difference(&instr.defs()).copied().collect();
+            before.extend(instr.uses());
 
             liveness.push(Liveness {
                 instr: instr.clone(),
