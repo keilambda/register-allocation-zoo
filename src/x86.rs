@@ -4,10 +4,10 @@ use std::sync::LazyLock;
 use string_interner::{DefaultStringInterner, DefaultSymbol, StringInterner};
 
 type Name = DefaultSymbol;
+type Label = DefaultSymbol;
 
-static INTERNER: LazyLock<Mutex<DefaultStringInterner>> = LazyLock::new(|| Mutex::new(StringInterner::default()));
-
-type Label = String;
+static INTERNER: LazyLock<Mutex<DefaultStringInterner>> =
+    LazyLock::new(|| Mutex::new(StringInterner::default()));
 
 type Arity = u8;
 
@@ -94,7 +94,7 @@ impl From<i64> for Operand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstrF<A> {
     AddQ(A, A),
     SubQ(A, A),
@@ -150,11 +150,7 @@ impl Instr {
                 set.insert(*dst);
             }
             CallQ(_, _) => {
-                set.extend(
-                    Register::CALLER_SAVED
-                        .iter()
-                        .map(|reg| Operand::Reg(*reg)),
-                );
+                set.extend(Register::CALLER_SAVED.iter().map(|reg| Operand::Reg(*reg)));
             }
             _ => {}
         }
@@ -180,9 +176,9 @@ impl Block {
             before.extend(instr.uses());
 
             liveness.push(Liveness {
-                instr: instr.clone(),
+                instr: *instr,
                 before: before.clone(),
-                after: after.clone(),
+                after,
             });
 
             after = before;
