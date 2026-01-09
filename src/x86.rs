@@ -1,13 +1,10 @@
 use std::collections::HashSet;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Name(pub String);
+type Name = String;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Label(pub String);
+type Label = String;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Arity(pub u8);
+type Arity = u8;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Register {
@@ -82,7 +79,7 @@ impl Operand {
 
 impl From<&str> for Operand {
     fn from(value: &str) -> Self {
-        Operand::Var(Name(value.to_owned()))
+        Operand::Var(value.to_owned())
     }
 }
 
@@ -131,7 +128,7 @@ impl Instr {
                 set.extend(
                     Register::ARGUMENT_PASSING
                         .iter()
-                        .take(arity.0 as usize)
+                        .take(*arity as usize)
                         .map(|reg| Operand::Reg(reg.clone())),
                 );
             }
